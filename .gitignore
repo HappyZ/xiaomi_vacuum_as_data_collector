@@ -52,5 +52,5 @@ qtcreator-*
 CATKIN_IGNORE
 
 # Others
-push_to_vacuum.sh
-run_cmd_at_vacuum.sh
+.setup.sh
+config.json
