@@ -24,6 +24,7 @@ devel_isolated/
 # Ignore generated docs
 *.dox
 *.wikidoc
+.DS_Store
 
 # eclipse stuff
 .project
@@ -49,3 +50,7 @@ qtcreator-*
 
 # Catkin custom files
 CATKIN_IGNORE
+
+# Others
+push_to_vacuum.sh
+run_cmd_at_vacuum.sh
