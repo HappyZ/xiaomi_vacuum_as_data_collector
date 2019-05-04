@@ -23,7 +23,7 @@ def control_help():
     print('help                     - this message')
     print('home                     - move vacuum to dock location')
     print('move auto/pause/stop.    - auto scanning movement (no data parsing)')
-    print('move angle speed time    - move `angle` deg at `speed`m/s for `time`ms')
+    print('move rotate speed time   - move (-180, 180)deg at (-0.3,0.3)m/s for `time`ms')
     print('goto x_coor y_coor       - move to x,y location on map')
     print('trace on/off             - manually start/stop collecting trace')
     print('download trace/map       - download the trace or map on vacuum')
