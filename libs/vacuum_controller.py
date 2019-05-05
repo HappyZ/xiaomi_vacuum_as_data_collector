@@ -23,6 +23,7 @@ def control_help():
     print('Control Command Menu')
     print('help                         - this message')
     print('home                         - move vacuum to dock location')
+    print('status                       - print the status of vacuum')
     print('start                        - automatically start one cleaning sesssion and get data')
     print('move auto/pause/stop/home.   - auto scanning movement (no data parsing)')
     print('move rotate speed time       - move (-180, 180)deg at (-0.3,0.3)m/s for `time`ms')
