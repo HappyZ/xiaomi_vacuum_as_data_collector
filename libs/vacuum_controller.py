@@ -23,12 +23,13 @@ def control_help():
     print('Control Command Menu')
     print('help                         - this message')
     print('home                         - move vacuum to dock location')
+    print('start                        - automatically start one cleaning sesssion and get data')
     print('move auto/pause/stop/home.   - auto scanning movement (no data parsing)')
     print('move rotate speed time       - move (-180, 180)deg at (-0.3,0.3)m/s for `time`ms')
     print('fanspeed integer             - set fan speed to be [1-99]')
     print('goto x_coor y_coor           - move to x,y location on map')
     print('trace on/off                 - manually start/stop collecting trace')
-    print('download trace/map           - download the trace or map on vacuum')
+    print('download <trace/map>         - download the trace or map on vacuum, or all if not specified')
     print('config <cmds>                - configuration')
     print('quit/exit                    - exit controller (Ctrl + D does the same)')
 
@@ -260,6 +261,28 @@ class VacuumController():
                 print("Err: {}".format(e))
                 raise
 
+    def _session_auto(self):
+        status = self.vacuum.status()
+        if status.battery < 50:
+            print("Battery less than 50%, please charge till above 50% to continue")
+            return False
+        self._control(["trace", "on"])
+        self._control(["move", "auto"])
+        self._control(["fanspeed", "1"])  # set to lowest fan speed
+        while 1:
+            status = self.vacuum.status()
+            if status.error_code > 0 or status.state_code == 12:
+                print("Err: {}".format(status.error))
+                break
+            if status.state_code == 6:
+                print("Returning home.. stopping..")
+                break
+            print(status)
+            time.sleep(1)
+        self._control(["trace", "off"])
+        self._control(["download"])
+
+
     def _control(self, cmd):
         if cmd[0] == 'help':
             control_help()
@@ -273,24 +296,24 @@ class VacuumController():
                 return False
             if cmd[1] == 'on' or cmd[1] == 'start' or cmd[1] == 'enable':
                 print("Cleaning old data on device..")
-                if run_ssh_command(
+                run_ssh_command(
                     "rm {0}/*.ppm && rm {0}/*.csv".format(self.get_remote_folder())
-                ) is None:
-                    return False
-                print("Running script on vacuum..")
+                )
+                print("Enabling trace on the vacuum..")
                 if run_ssh_command(
                     "nohup /usr/bin/python3 {0}/get_loc_est.py {0}/{1} > /dev/null 2>&1 &"
                     .format(self.get_remote_folder(), "tmp.csv")
                 ) is None:
                     return False
             elif cmd[1] == 'off' or cmd[1] == 'stop' or cmd[1] == 'disable':
-                print("Stopping python3..")
+                print("Stopping trace collection on vacuum..")
                 if run_ssh_command("killall python3") is None:
                     return False
             else:
                 print("Unknown command: {}".format(cmd))
                 return False
         elif cmd[0] == 'download':
+            print("Downloading..")
             prefix = time.strftime("%Y%m%d_%H%M%S", time.localtime())
             if len(cmd) == 1:
                 return (
@@ -379,6 +402,8 @@ class VacuumController():
             except ValueError:
                 print("Err: please type into integer")
                 return False
+        elif cmd[0] == 'start':
+            return self._session_auto()
         return True
 
 
