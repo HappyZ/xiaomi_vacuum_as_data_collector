@@ -13,8 +13,8 @@ echo "Create folder on vacuum.."
 ${REMOTE_CMD} mkdir -p ${EXP_FP}/libs
 
 echo "Push files to vacuum to run.."
-scp ./libs/__init__.py ${REMOTE_EXP_FP}
-scp ./libs/parser.py ${REMOTE_EXP_FP}
+scp ./libs/__init__.py ${REMOTE_EXP_FP}/libs/
+scp ./libs/parser.py ${REMOTE_EXP_FP}/libs/
 scp ./get_loc_est.py ${REMOTE_EXP_FP}
 
 echo "Install necessary packages"

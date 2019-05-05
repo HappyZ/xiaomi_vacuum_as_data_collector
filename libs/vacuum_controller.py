@@ -4,6 +4,7 @@ import json
 import miio
 import codecs
 import socket
+import binascii
 import subprocess
 
 from libs.env import set_env_var
@@ -20,21 +21,22 @@ def config_help():
 
 def control_help():
     print('Control Command Menu')
-    print('help                     - this message')
-    print('home                     - move vacuum to dock location')
-    print('move auto/pause/stop.    - auto scanning movement (no data parsing)')
-    print('move rotate speed time   - move (-180, 180)deg at (-0.3,0.3)m/s for `time`ms')
-    print('goto x_coor y_coor       - move to x,y location on map')
-    print('trace on/off             - manually start/stop collecting trace')
-    print('download trace/map       - download the trace or map on vacuum')
-    print('config <cmds>            - configuration')
-    print('quit/exit                - exit controller (Ctrl + D does the same)')
+    print('help                         - this message')
+    print('home                         - move vacuum to dock location')
+    print('move auto/pause/stop/home.   - auto scanning movement (no data parsing)')
+    print('move rotate speed time       - move (-180, 180)deg at (-0.3,0.3)m/s for `time`ms')
+    print('fanspeed integer             - set fan speed to be [1-99]')
+    print('goto x_coor y_coor           - move to x,y location on map')
+    print('trace on/off                 - manually start/stop collecting trace')
+    print('download trace/map           - download the trace or map on vacuum')
+    print('config <cmds>                - configuration')
+    print('quit/exit                    - exit controller (Ctrl + D does the same)')
 
 
 def run_ssh_command(cmd):
     try:
         output = subprocess.check_output(
-            "ssh -o ConnectTimeout=10 -t root@${{MIROBO_IP}} '{}'"
+            "ssh -o ConnectTimeout=10 root@${{MIROBO_IP}} '{}'"
             .format(cmd),
             shell=True
         ).decode()
@@ -83,18 +85,13 @@ class VacuumController():
         if token:
             self.set_token(token)
 
-        # if we still don't have an IP address, or asked to scan anyways
-        if forceScan or self.get_ip() is None:
-            self.finding_ip()
-
         self.vacuum = miio.Vacuum(
             ip=self.get_ip(),
             token=self.get_token()
         )
 
-        # now if we still don't have a valid token, or asked to scan anyways
-        if forceScan or self.get_token() is None:
-            self.fetching_token()
+        if forceScan or self.get_ip() is None or self.get_token() is None:
+            self.discover()
 
         export_ip_token(self.get_ip(), self.get_token())
 
@@ -116,45 +113,65 @@ class VacuumController():
     def set_config(self, key, val):
         self.config[key] = val
 
-    def _discover_devices(self, timeout=5):
-        ips = []
+    def _discover(self, timeout=5):
+        seen_devices = []
+        magic = '21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
         # broadcast magic handshake to find devices
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         s.settimeout(timeout)
-        s.sendto(
-            bytes.fromhex('21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'),
-            ('<broadcast>', 54321)
-        )
+        s.sendto(bytes.fromhex(magic), ('<broadcast>', 54321))
         while 1:
             try:
-                __, addr = s.recvfrom(1024)
-                if addr[0] not in ips:
-                    ips.append(addr[0])
+                data, addr = s.recvfrom(1024)
+                m = miio.protocol.Message.parse(data)
+                if addr[0] not in seen_devices:
+                    seen_device = (
+                        addr[0],
+                        binascii.hexlify(m.header.value.device_id).decode(),
+                        m.checksum
+                    )
+                    print(
+                        "IP {} (ID: {}) - token: {}"
+                        .format(
+                            seen_device[0],
+                            seen_device[1],
+                            codecs.encode(seen_device[2], 'hex').decode()
+                        )
+                    )
+                    seen_devices.append(seen_device)
             except socket.timeout:
+                print("Discover done!")
                 break  # ignore timeouts on discover
             except Exception as e:
                 print('Error while reading discover results: {}'.format(e))
                 break
-        return ips
+        return seen_devices
 
-    def finding_ip(self):
+    def discover(self):
         '''
-        getting ip of vacuum
+        getting ip and token of device, e.g., vacuum
         '''
-        ips = self._discover_devices()
-        if not ips:
-            print('Err: cannot find any vacuum IP')
+        seen_devices = self._discover()
+        if not seen_devices:
+            print('Err: cannot find any devices')
             exit(-1)
-        if len(ips) == 1:
-            self.set_ip(ips[0])
+        if len(seen_devices) == 1:
+            self.set_ip(seen_devices[0][0])
+            self.vacuum.token = seen_devices[0][2]
+            self.set_token(codecs.encode(seen_devices[0][2], 'hex').decode())
             return
         print('Found multiple IPs:')
-        for i, ip in enumerate(ips):
-            print(' {0}. {1}'.format(i+1, ip))
+        for i, seen_device in enumerate(seen_devices):
+            print(
+                ' {0}. {1} - {2} - {3}'
+                .format(i+1, seen_device[0], seen_device[1], seen_device[2])
+            )
         try:
             selected = input('Please select one by typing number (1-{}): '.format(len(ips)))
-            self.set_ip(ips[int(selected)-1])
+            self.set_ip(seen_devices[int(selected)-1][0])
+            self.vacuum.token = seen_devices[int(selected)-1][2]
+            self.set_token(codecs.encode(seen_devices[int(selected)-1][2], 'hex').decode())
         except KeyboardInterrupt:
             print('User requested to exit')
             exit(0)
@@ -175,7 +192,7 @@ class VacuumController():
         print('Sending handshake to get token')
         m = self.vacuum.do_discover()
         self.vacuum.token = m.checksum
-        self.set_token(codecs.encode(m.checksum, 'hex'))
+        self.set_token(codecs.encode(m.checksum, 'hex').decode())
 
     def test_connection(self):
         '''
@@ -255,10 +272,15 @@ class VacuumController():
                 print("Insufficient command")
                 return False
             if cmd[1] == 'on' or cmd[1] == 'start' or cmd[1] == 'enable':
+                print("Cleaning old data on device..")
+                if run_ssh_command(
+                    "rm {0}/*.ppm && rm {0}/*.csv".format(self.get_remote_folder())
+                ) is None:
+                    return False
                 print("Running script on vacuum..")
                 if run_ssh_command(
-                    "python3 {0}/get_loc_est.py {1} &"
-                    .format(self.get_remote_folder, "tmp.csv")
+                    "nohup /usr/bin/python3 {0}/get_loc_est.py {0}/{1} > /dev/null 2>&1 &"
+                    .format(self.get_remote_folder(), "tmp.csv")
                 ) is None:
                     return False
             elif cmd[1] == 'off' or cmd[1] == 'stop' or cmd[1] == 'disable':
@@ -287,7 +309,8 @@ class VacuumController():
             elif cmd[1] == 'map':
                 # find file first
                 content = run_ssh_command(
-                    "ls /run/shm/*.ppm"
+                    "cp /run/shm/*.ppm {0} && ls {0}/*.ppm"
+                    .format(self.get_remote_folder())
                 )
                 if not content:
                     return False
@@ -295,7 +318,8 @@ class VacuumController():
                 if len(files) == 0:
                     print("Cannot find map file!")
                     return False
-                # download only the last ppm file
+                print("Found maps: {}".format(files))
+                # download only the latest ppm file
                 if not fetch_file_from_vacuum(
                     files[-1],
                     "./{}_map.ppm".format(cmd[2] if len(cmd) > 2 else prefix)
@@ -322,12 +346,30 @@ class VacuumController():
             elif cmd[1] == 'stop':
                 print("Stopping..")
                 self.vacuum.stop()
+            elif cmd[1] == 'home':
+                print("Returning Home..")
+                self.vacuum.home()
             elif len(cmd) > 2:
                 try:
                     duration = int(cmd[3]) if len(cmd) > 3 else 1500
                     self.vacuum.manual_control(int(cmd[1]), float(cmd[2]), duration)
                 except ValueError:
                     print("Err: rotation in (-180, 180), speed in (-0.3, 0.3), duration as ms in integer (default 1500)")
+                    return False
+                except BaseException as e:
+                    print("Err: {}".format(e))
+                    return False
+        elif cmd[0] == 'fanspeed':
+            if len(cmd) == 1:
+                print("Insufficient command")
+                return False
+            try:
+                self.vacuum.set_fan_speed(int(cmd[1]))
+            except ValueError:
+                print("Err: speed must be integer")
+                return False
+            except BaseException as e:
+                print("Err: {}".format(e))
                 return False
         elif cmd[0] == 'goto':
             if len(cmd) < 3:
@@ -364,10 +406,10 @@ class VacuumController():
 
 def init_controller(ip, token):
     c = VacuumController(ip=ip, token=token, forceScan=False)
-    # if not c.test_connection():
-    #     c = VacuumController(forceScan=True)
-    #     if not c.test_connection():
-    #         print("Cannot connect to vacuum!")
-    #         exit(-1)
+    if not c.test_connection():
+        c = VacuumController(forceScan=True)
+        if not c.test_connection():
+            print("Cannot connect to vacuum!")
+            exit(-1)
 
     return c
