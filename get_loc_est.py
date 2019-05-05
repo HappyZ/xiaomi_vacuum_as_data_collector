@@ -4,6 +4,10 @@ import subprocess
 from libs.parser import get_slam_log
 
 
+# This script supposes to run ON THE VACUUM
+# do not run it on your local pc
+
+
 # args
 parser = argparse.ArgumentParser(
     description='Get Location Estimation from SLAM log on the vacuum'
