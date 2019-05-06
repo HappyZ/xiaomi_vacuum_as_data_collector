@@ -1,4 +1,4 @@
-rawdata = readtable('./test/20190505_170223_sig/98fc11691fc5.csv');
+rawdata = readtable('./example/20190505_170223_sig/98fc11691fc5.csv');
 data = table2array(rawdata(:, [1,2,4,5,9]));
 unique_types = unique(data(:,5));
 
