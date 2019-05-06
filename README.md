@@ -64,7 +64,7 @@ fi
 #### 5. Restart vacuum
 
 
-# Tools Usage
+# Controller Tool Usage
 
 ```
 python controller.py
@@ -139,6 +139,18 @@ Example commands:
 config >>> get remote_script_folder
 /mnt/data/exp
 ```
+
+# Processor Tool Usage
+
+After we get the `.pcap` file collected from phone, put the downloaded files (`*_map.ppm` and `*loc.csv`) with the `.pcap` file together under the same folder, e.g., `example`.
+
+Then run
+
+```
+python preprocessor.py <folder path>
+```
+
+It will automatically extracts all RSS values from pcap file for each MAC address, and plot the `.png` figure with the RSS values being the red alpha channel (opacity) on the trace.
 
 
 # Reference
