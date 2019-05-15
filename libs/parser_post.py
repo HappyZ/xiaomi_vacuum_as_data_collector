@@ -14,8 +14,7 @@ def extract_dev_from_combined(fp, minimalCounts=100, cleanup=True):
     '''
     extract each device data from combined file `fp`
     '''
-    files = []
-    counters = []
+    files = {}
     folderpath, ext = os.path.splitext(fp)
 
     try:
@@ -32,31 +31,25 @@ def extract_dev_from_combined(fp, minimalCounts=100, cleanup=True):
         tmp = line.rstrip().split(",")
         addr = tmp[2].replace(":", "")
         if addr not in files:
-            files.append(addr)
-            counters.append(1)
-        else:
-            counters[files.index(addr)] += 1
+            files[addr] = []
+        files[addr].append(",".join(tmp[:2] + tmp[3:]))
 
-    for i in range(len(counters)-1, -1, -1):
-        if counters[i] < minimalCounts:
-            counters.pop(i)
-            files.pop(i)
+    for addr in list(files.keys()):
+        if len(files[addr]) < minimalCounts:
+            del files[addr]
 
     title = lines[0].rstrip().split(",")
-    filepaths = ["{}/{}.csv".format(folderpath, file) for file in files]
-    for filepath in filepaths:
-        with open(filepath, "w") as f:
-            f.write(",".join(title[:2] + title[3:]) + "\n")
+    headline = ",".join(title[:2] + title[3:]) + "\n"
+    filepaths = []
 
-    for line in lines[1:]:
-        tmp = line.rstrip().split(",")
-        addr = tmp[2].replace(":", "")
-        if addr not in files:
-            continue
-        filepath = filepaths[files.index(addr)]
-        with open(filepath, "a+") as f:
-            f.write(",".join(tmp[:2] + tmp[3:]) + "\n")
-    
+    for addr in files.keys():
+        filepath = "{}/{}.csv".format(folderpath, addr)
+        filepaths.append(filepath)
+        with open(filepath, "w") as f:
+            f.write(headline)
+            for line in files[addr]:
+                f.write("{}\n".format(line))
+
     if len(files) > 0 and cleanup:
         os.remove(fp)
 
