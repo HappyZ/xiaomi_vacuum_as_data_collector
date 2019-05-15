@@ -170,7 +170,7 @@ class VacuumController():
                 .format(i+1, seen_device[0], seen_device[1], seen_device[2])
             )
         try:
-            selected = input('Please select one by typing number (1-{}): '.format(len(ips)))
+            selected = input('Please select one by typing number (1-{}): '.format(len(seen_devices)))
             self.set_ip(seen_devices[int(selected)-1][0])
             self.vacuum.token = seen_devices[int(selected)-1][2]
             self.set_token(codecs.encode(seen_devices[int(selected)-1][2], 'hex').decode())
@@ -271,9 +271,26 @@ class VacuumController():
         self._control(["move", "auto"])
         self._control(["fanspeed", "1"])  # set to lowest fan speed
         while 1:
-            status = self.vacuum.status()
+            try:
+                status = self.vacuum.status()
+            except KeyboardInterrupt:
+                break
+            except BaseException as e:
+                print("Err: {}".format(e))
+                print("Wait for a bit..")
+                time.sleep(10)
+                continue
             if status.error_code > 0 or status.state_code == 12:
                 print("Err: {}".format(status.error))
+                try:
+                    # try to pause
+                    print("Trying to pause due to the error")
+                    self.vacuum.pause()
+                except BaseException as e:
+                    print("Err: cannot pause due to {}".format(e))
+                    print("Wait for 30s and restart discovering mode")
+                    self.discover()
+                    continue
                 break
             if status.state_code == 6:
                 print("Returning home.. stopping..")
