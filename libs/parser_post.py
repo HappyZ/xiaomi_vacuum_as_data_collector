@@ -85,10 +85,8 @@ def combine_sig_loc(sig_fp, loc_fp):
             epoch_loc = float(loc_tmp[2]) / 1000.0
             x = float(loc_tmp[3])
             y = float(loc_tmp[4])
-            if epoch_sig > epoch_loc:
+            if epoch_sig > epoch_loc and i_l < len_loc - 1:
                 i_l += 1
-                if i_l >= len_loc:
-                    i_l = len_loc - 1
                 continue
             f.write("{},{},{}\n".format(x, y, ",".join(sig_tmp)))
             i_s += 1
