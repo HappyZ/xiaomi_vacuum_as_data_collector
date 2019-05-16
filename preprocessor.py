@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 
 from libs.parser_post import build_map
@@ -24,12 +25,7 @@ def get_files(folder):
             f_loc_est = "{0}/{1}".format(folder, file)
         elif 'map.ppm' in file:
             f_map_image = "{0}/{1}".format(folder, file)
-    if f_loc_est is None or f_map_image is None:
-        f_loc_est = None
-        f_map_image = None
-        f_sig_data = None
     return f_map_image, f_loc_est, f_sig_data, is_csi
-
 
 
 def generate_map(f_map, f_loc, f_sig_extracted, is_csi):
@@ -69,17 +65,20 @@ def generate_map(f_map, f_loc, f_sig_extracted, is_csi):
 def main(args):
     if not os.path.isdir(args.folder):
         print("Err: folder {} does not exist".format(args.folder))
-        exit(2)
+        sys.exit(2)
     f_map, f_loc, f_sig, is_csi = get_files(args.folder)
-    if f_map is None or f_loc is None or f_sig is None:
+    if f_loc is None or f_sig is None:
         print("Err: desired files not exist")
-        exit(2)
+        sys.exit(2)
+
     # parse pcap into csv, and add location if it has one
     f_sig_parsed = translate_pcap(f_sig, is_csi)
     f_sig_combined = combine_sig_loc(f_sig_parsed, f_loc)
     f_sig_extracted = extract_dev_from_combined(f_sig_combined, minimalCounts=100)
+
     # generate path in map for visualization
-    generate_map(f_map, f_loc, f_sig_extracted, is_csi)
+    if args.map:
+        generate_map(f_map, f_loc, f_sig_extracted, is_csi)
 
 
 if __name__ == '__main__':
@@ -90,5 +89,16 @@ if __name__ == '__main__':
         dest='folder',
         help='Specify folder path of data'
     )
-    args, __ = parser.parse_known_args()
+    parser.add_argument(
+        '--map', '-m',
+        dest='map',
+        action='store_true',
+        default=False,
+        help='Enable to generate map images'
+    )
+    try:
+        args, __ = parser.parse_known_args()
+    except BaseException as e:
+        print("Err: {}".format(e))
+        sys.exit(-1)
     main(args)
