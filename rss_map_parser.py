@@ -14,16 +14,28 @@ picked_type = -1
 
 def main():
     if sys.argv[1] == "-help":
-        print("usage: python3 rss_map_parser.py path/to/file/filename.csv -v/-h (vertical/horizontal map orientation) -d/-v/-dv (download/&visulize parsed rss map)")
+        print("usage: python3 rss_map_parser.py path/to/file/filename.csv -u/-d/-l/-r (when dot at upper/lower/left/right edge) -d/-v/-dv (download/&visulize parsed rss map)")
     else:
         pathtofile = sys.argv[1]
         orientation = sys.argv[2]
         operation = sys.argv[3]
+
+        if len(pathtofile) == 0:
+            print("error: missing arguments[1] indicating the csv file path")
+            return
+
         find_type(pathtofile)
-        if orientation == '-h':
-            readCSV_h(pathtofile)
-        elif orientation == '-v':
-            readCSV_v(pathtofile)
+        if orientation == '-r':
+            readCSV_r(pathtofile)
+        elif orientation == '-d':
+            readCSV_d(pathtofile)
+        elif orientation == '-l':
+            readCSV_l(pathtofile)
+        elif orientation == '-u':
+            readCSV_u(pathtofile)
+        else:
+            print("error: missing arguments[2] indicating the dot position")
+            return
         parse_map()
 
         if operation == '-d':
@@ -33,6 +45,9 @@ def main():
         elif operation == '-dv':
             write_pickle(pathtofile)
             visualize_map()
+        else:
+            print("error: missing arguments[3] indicating the operation (e.g., download & visulize)")
+            return
 
 def find_type(pathtofile):
     global type_values
@@ -53,7 +68,22 @@ def find_type(pathtofile):
 
     picked_type = types[type_values.index(max(type_values))]
 
-def readCSV_v(pathtofile):
+def readCSV_u(pathtofile):
+    global xy_locs_rss
+    global picked_type
+    with open(pathtofile) as csvfile:
+        csv_reader = csv.reader(csvfile, delimiter=',')
+        for row in csv_reader:
+            if row[8]==picked_type:
+                x_loc = -float(row[0])
+                y_loc = -float(row[1])
+                rss = float(row[4])
+                xy_locs_rss = np.vstack([xy_locs_rss, [x_loc, y_loc, rss]])
+
+    xy_locs_rss = sorted(xy_locs_rss, key=lambda x: x[0])
+    xy_locs_rss = np.transpose(xy_locs_rss)
+
+def readCSV_d(pathtofile):
     global xy_locs_rss
     global picked_type
     with open(pathtofile) as csvfile:
@@ -68,7 +98,22 @@ def readCSV_v(pathtofile):
     xy_locs_rss = sorted(xy_locs_rss, key=lambda x: x[0])
     xy_locs_rss = np.transpose(xy_locs_rss)
 
-def readCSV_h(pathtofile):
+def readCSV_l(pathtofile):
+    global xy_locs_rss
+    global picked_type
+    with open(pathtofile) as csvfile:
+        csv_reader = csv.reader(csvfile, delimiter=',')
+        for row in csv_reader:
+            if row[8]==picked_type:
+                x_loc = -float(row[1])
+                y_loc = float(row[0])
+                rss = float(row[4])
+                xy_locs_rss = np.vstack([xy_locs_rss, [x_loc, y_loc, rss]])
+
+    xy_locs_rss = sorted(xy_locs_rss, key=lambda x: x[0])
+    xy_locs_rss = np.transpose(xy_locs_rss)
+
+def readCSV_r(pathtofile):
     global xy_locs_rss
     global picked_type
     with open(pathtofile) as csvfile:
