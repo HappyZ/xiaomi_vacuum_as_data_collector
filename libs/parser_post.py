@@ -67,8 +67,10 @@ def blocking_display_rss_map(rss_map: np.ndarray):
     plt.colorbar()
     # plt.show()
     plt.draw()
-    plt.pause(1)
-    input("press Enter to continue... ")
+    plt.pause(0.1)
+    q = input("press Enter to continue... type q to quit: ")
+    if q == 'q':
+        sys.exit()
     plt.close()
     print()
 

@@ -137,6 +137,6 @@ if __name__ == '__main__':
         default=0,
         help='Specify orientation of the map'
     )
-    args = parser.parse_known_args()
+    args, __ = parser.parse_known_args()
 
     main(args)
