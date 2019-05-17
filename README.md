@@ -147,11 +147,32 @@ After we get the `.pcap` file collected from phone, put the downloaded files (`*
 Then run
 
 ```
-python preprocessor.py <folder path>
+python preprocessor.py <folder path> --pickle -v --orient 0
 ```
 
 It will automatically extracts all RSS values from pcap file for each MAC address, and plot the `.png` figure with the RSS values being the red alpha channel (opacity) on the trace.
 
+
+Commands details:
+
+```
+usage: preprocessor.py [-h] [--map] [--pickle] [--visualize]
+                       [--orient ORIENTATION]
+                       folder
+
+Data Pre-Processor
+
+positional arguments:
+  folder                Specify folder path of data
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --map                 Enable to generate map images with scanned floorplan
+  --pickle              Enable to dump into pickle images
+  --visualize, -v       Enable to visualize map images while dumping to
+                        pickles
+  --orient ORIENTATION  Specify orientation of the map
+```
 
 # Reference
 

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import os
 import sys
 import argparse
@@ -5,6 +7,7 @@ import argparse
 from libs.parser_post import build_map
 from libs.parser_post import translate_pcap
 from libs.parser_post import combine_sig_loc
+from libs.parser_post import convert_to_pickle_rss
 from libs.parser_post import get_locs_from_slam_data
 from libs.parser_post import get_locs_from_parsed_sig_data
 from libs.parser_post import extract_dev_from_combined
@@ -28,7 +31,7 @@ def get_files(folder):
     return f_map_image, f_loc_est, f_sig_data, is_csi
 
 
-def generate_map(f_map, f_loc, f_sig_extracted, is_csi):
+def generate_floorplan_map(f_map, f_loc, f_sig_extracted, is_csi):
     '''
     generate maps for path and signals
     '''
@@ -62,6 +65,20 @@ def generate_map(f_map, f_loc, f_sig_extracted, is_csi):
             f.write(augmented_map.getvalue())
 
 
+def convert_to_pickle(filepaths, orientation, visualize, is_csi):
+    '''
+    '''
+    if is_csi:
+        print("Err: not implemented for CSIs yet")
+        return
+    for filepath in filepaths:
+        print("parsing file: {}".format(filepath))
+        try:
+            convert_to_pickle_rss(filepath, orientation, visualize)
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt happened")
+
+
 def main(args):
     if not os.path.isdir(args.folder):
         print("Err: folder {} does not exist".format(args.folder))
@@ -74,11 +91,14 @@ def main(args):
     # parse pcap into csv, and add location if it has one
     f_sig_parsed = translate_pcap(f_sig, is_csi)
     f_sig_combined = combine_sig_loc(f_sig_parsed, f_loc)
-    f_sig_extracted = extract_dev_from_combined(f_sig_combined, minimalCounts=100)
+    f_sig_extracted = extract_dev_from_combined(f_sig_combined, minimalCounts=5000)
+
+    if args.pickle:
+        convert_to_pickle(f_sig_extracted, args.orientation, args.visualize, is_csi)
 
     # generate path in map for visualization
     if args.map:
-        generate_map(f_map, f_loc, f_sig_extracted, is_csi)
+        generate_floorplan_map(f_map, f_loc, f_sig_extracted, is_csi)
 
 
 if __name__ == '__main__':
@@ -90,15 +110,33 @@ if __name__ == '__main__':
         help='Specify folder path of data'
     )
     parser.add_argument(
-        '--map', '-m',
+        '--map',
         dest='map',
         action='store_true',
         default=False,
-        help='Enable to generate map images'
+        help='Enable to generate map images with scanned floorplan'
     )
-    try:
-        args, __ = parser.parse_known_args()
-    except BaseException as e:
-        print("Err: {}".format(e))
-        sys.exit(-1)
+    parser.add_argument(
+        '--pickle',
+        dest='pickle',
+        action='store_true',
+        default=False,
+        help='Enable to dump into pickle images'
+    )
+    parser.add_argument(
+        '--visualize', '-v',
+        dest='visualize',
+        action='store_true',
+        default=False,
+        help='Enable to visualize map images while dumping to pickles'
+    )
+    parser.add_argument(
+        '--orient',
+        dest='orientation',
+        type=int,
+        default=0,
+        help='Specify orientation of the map'
+    )
+    args = parser.parse_known_args()
+
     main(args)

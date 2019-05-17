@@ -1,13 +1,168 @@
+#!/usr/bin/python
+
 import io
 import os
+import sys
+import pickle
+from time import sleep
+
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageChops
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 from libs.tshark import Tshark
 
 
 RED = (255, 0, 0, 255)
+PICKLE_MAP_SIZE = 64   # num
+PICKLE_MAP_STEP = 0.1  # meter
+np.set_printoptions(threshold=sys.maxsize)
+
+
+
+def load_rss_data_with_pkt_types(fp: str, orientation: int) -> dict:
+    '''
+    split rss data into multiple types
+    '''
+    result = {}
+    with open(fp, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        if '#' in line:
+            continue
+        data = line.rstrip().split(',')
+        pkt_type = int(data[8])
+        if pkt_type not in result:
+            result[pkt_type] = []
+        # rotate at (0, 0), the dock location
+        if (orientation % 4) is 0:
+            loc_x = float(data[0])
+            loc_y = float(data[1])
+        elif (orientation % 4) is 1:
+            loc_x = -float(data[1])
+            loc_y = float(data[0])
+        elif (orientation % 4) is 2:
+            loc_x = -float(data[0])
+            loc_y = -float(data[1])
+        elif (orientation % 4) is 3:
+            loc_x = float(data[1])
+            loc_y = -float(data[0])
+        # only need to take x, y, RSS for now
+        result[pkt_type].append([loc_x, loc_y, float(data[4])])
+    return result
+
+
+def blocking_display_rss_map(rss_map: np.ndarray):
+    '''
+    '''
+    plt.imshow(
+        np.transpose(rss_map),
+        cmap='hot',
+        origin='lower',
+        interpolation='nearest'
+    )
+    plt.colorbar()
+    # plt.show()
+    plt.draw()
+    plt.pause(1)
+    input("press Enter to continue... ")
+    plt.close()
+    print()
+
+
+def convert_to_pickle_rss(fp: str, orientation: int, visualize: bool):
+    '''
+    modified from Zhuolin
+    '''
+
+    def find_index(array, lower, upper):
+        return np.where((array >= lower) & (array <= upper))[0]
+
+    # load data and split into different types
+    results = load_rss_data_with_pkt_types(fp, orientation)
+
+    # pick the most frequent type
+    pkt_types = [(key, len(results[key])) for key in results.keys()]
+    pkt_types = sorted(pkt_types, key=lambda x: x[1], reverse=True)
+    print("most frequent data type is {} with {} pkts".format(pkt_types[0][0], pkt_types[0][1]))
+    data = results[pkt_types[0][0]]
+
+    # sort it and transpose it
+    data = np.transpose(np.array(sorted(data, key = lambda x: (x[0], x[1]))))
+    loc_x_min = min(data[0, :])
+    loc_x_max = max(data[0, :])
+    loc_y_min = min(data[1, :])
+    loc_y_max = max(data[1, :])
+    loc_x_center = (loc_x_min + loc_x_max) / 2.0
+    loc_y_center = (loc_y_min + loc_y_max) / 2.0
+    
+    # convert it to a map
+    # rss_map_dict = {}
+    rss_map = np.ones((PICKLE_MAP_SIZE, PICKLE_MAP_SIZE)) * (-85.0)
+    factor = 0.75
+
+    for i in range(PICKLE_MAP_SIZE):
+        # if i not in rss_map_dict:
+        #     rss_map_dict[i] = {}
+        # search for x_idx
+        upper_bound_x = loc_x_center + PICKLE_MAP_STEP * (i - (PICKLE_MAP_SIZE / 2) + 0.5)
+        lower_bound_x = upper_bound_x - PICKLE_MAP_STEP
+        data_x_idxs = find_index(
+            data[0, :],
+            lower_bound_x - factor * PICKLE_MAP_STEP,
+            upper_bound_x + factor * PICKLE_MAP_STEP
+        )
+        data_part = data[:, data_x_idxs]
+        if data_part.size is 0:
+            continue
+        data_y_idx = 0
+        for j in range(PICKLE_MAP_SIZE):
+            # search for y_idx
+            upper_bound_y = loc_y_center + PICKLE_MAP_STEP * (j - (PICKLE_MAP_SIZE / 2) + 0.5)
+            lower_bound_y = upper_bound_y - PICKLE_MAP_STEP
+            data_y_idxs = find_index(
+                data_part[1, :],
+                lower_bound_y - factor * PICKLE_MAP_STEP,
+                upper_bound_y + factor * PICKLE_MAP_STEP
+            )
+            data_fullfilled = data_part[2, data_y_idxs]
+            if data_fullfilled.size:
+                rss_map[i, j] = max(np.median(data_fullfilled), -85.0)
+
+    # del data
+    # for i in range(PICKLE_MAP_SIZE):
+    #     for j in range(PICKLE_MAP_SIZE):
+
+    #         left_block = rss_map_dict.get(i-1, {}).get(j, np.array([]))
+    #         top_block = rss_map_dict.get(i, {}).get(j-1, np.array([]))
+    #         right_block = rss_map_dict.get(i+1, {}).get(j, np.array([]))
+    #         bottom_block = rss_map_dict.get(i, {}).get(j+1, np.array([]))
+    #         extra_blocks = np.concatenate((left_block, top_block), axis=0)
+    #         extra_blocks = np.concatenate((extra_blocks, right_block), axis=0)
+    #         extra_blocks = np.concatenate((extra_blocks, bottom_block), axis=0)
+    #         center_block = rss_map_dict.get(i, {}).get(j, np.array([]))
+
+    #         extra_val = np.median(extra_blocks) if extra_blocks.size else None
+    #         center_val = np.median(center_block) if center_block.size else None
+
+    #         if center_val is None:
+    #             if extra_val is None:
+    #                 rss_map[i, j] = -85.0
+    #                 continue
+    #             center_val = extra_val
+    #         if extra_val is None:
+    #             extra_val = center_val
+    #         rss_map[i, j] = max(1 * center_val, -85.0)
+
+
+    if visualize:
+        blocking_display_rss_map(rss_map)
+
+    with open(fp.replace(".csv", "_map.pickle"), "wb") as f:
+        pickle.dump(rss_map, f)
 
 
 def extract_dev_from_combined(fp, minimalCounts=100, cleanup=True):
