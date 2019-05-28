@@ -74,7 +74,13 @@ def convert_to_pickle(filepaths, orientation, visualize, is_csi):
     for filepath in filepaths:
         print("parsing file: {}".format(filepath))
         try:
-            convert_to_pickle_rss(filepath, orientation, visualize)
+            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=None)
+            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=0)
+            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=1)
+            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=2)
+            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=3)
+            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=4)
+            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=5)
         except KeyboardInterrupt:
             print("KeyboardInterrupt happened")
 
@@ -94,6 +100,7 @@ def main(args):
     f_sig_extracted = extract_dev_from_combined(f_sig_combined, minimalCounts=5000)
 
     if args.pickle:
+        # f_sig_extracted = [x for x in f_sig_extracted if '98fc11691fc5' in x]
         convert_to_pickle(f_sig_extracted, args.orientation, args.visualize, is_csi)
 
     # generate path in map for visualization

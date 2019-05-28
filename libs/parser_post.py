@@ -63,12 +63,10 @@ def blocking_display_rss_map(rss_map: np.ndarray):
     '''
     '''
     plt.imshow(
-        np.transpose(rss_map) - np.nanmedian(rss_map),
+        np.transpose(rss_map),
         cmap='hot',
         origin='lower',
-        interpolation='nearest',
-        vmin=-15,
-        vmax=15
+        interpolation='nearest'
     )
     plt.colorbar()
     # plt.show()
@@ -81,7 +79,7 @@ def blocking_display_rss_map(rss_map: np.ndarray):
     print()
 
 
-def convert_to_pickle_rss(fp: str, orientation: int, visualize: bool):
+def convert_to_pickle_rss(fp: str, orientation: int, visualize: bool = False, filters: int = None):
     '''
     modified from Zhuolin
     '''
@@ -137,17 +135,32 @@ def convert_to_pickle_rss(fp: str, orientation: int, visualize: bool):
                 upper_bound_y + factor * PICKLE_MAP_STEP
             )
             data_fullfilled = data_part[2, data_y_idxs]
-            # orientation_fullfilled = data_part[3, data_y_idxs]
-            # data_fullfilled[(orientation_fullfilled > 0.5 * np.pi) & (orientation_fullfilled < 1.5 * np.pi)] = data_fullfilled[(orientation_fullfilled > 0.5 * np.pi) & (orientation_fullfilled < 1.5 * np.pi)] + 10.0
-            # data_fullfilled[(orientation_fullfilled > 0.1 * np.pi) & (orientation_fullfilled < 0.5 * np.pi)] = data_fullfilled[(orientation_fullfilled > 0.1 * np.pi) & (orientation_fullfilled < 0.5 * np.pi)] + 5.0
-            # data_fullfilled[(orientation_fullfilled > 1.5 * np.pi) & (orientation_fullfilled < 1.9 * np.pi)] = data_fullfilled[(orientation_fullfilled > 1.5 * np.pi) & (orientation_fullfilled < 1.9 * np.pi)] + 5.0
+            orientation_fullfilled = data_part[3, data_y_idxs]
+            if filters is 0:
+                data_fullfilled = data_fullfilled[(orientation_fullfilled > 1.75 * np.pi) | (orientation_fullfilled < 0.25 * np.pi)]
+            elif filters is 1:
+                data_fullfilled = data_fullfilled[(orientation_fullfilled > 1.25 * np.pi) & (orientation_fullfilled < 1.75 * np.pi)]
+            elif filters is 2:
+                data_fullfilled = data_fullfilled[(orientation_fullfilled > 0.75 * np.pi) & (orientation_fullfilled < 1.25 * np.pi)]
+            elif filters is 3:
+                data_fullfilled = data_fullfilled[(orientation_fullfilled > 0.25 * np.pi) & (orientation_fullfilled < 0.75 * np.pi)]
+            elif filters is 4:
+                data_fullfilled = data_fullfilled[(orientation_fullfilled > 1.5 * np.pi) | (orientation_fullfilled < 0.5 * np.pi)]
+            elif filters is 5:
+                data_fullfilled = data_fullfilled[(orientation_fullfilled > 0.5 * np.pi) & (orientation_fullfilled < 1.5 * np.pi)]
             if data_fullfilled.size:
                 rss_map[i, j] = max(np.median(data_fullfilled), -85.0)
 
     if visualize:
         blocking_display_rss_map(rss_map)
 
-    with open(fp.replace(".csv", "_pkttype_{}_map.pickle".format(pkt_types[0][0])), "wb") as f:
+    with open(
+        fp.replace(
+            ".csv", "_pkttype_{}_map{}.pickle"
+            .format(pkt_types[0][0], "" if filters is None else "_{}".format(filters))
+        ),
+        "wb"
+    ) as f:
         pickle.dump(rss_map, f)
 
 
