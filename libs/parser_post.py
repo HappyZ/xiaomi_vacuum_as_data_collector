@@ -34,24 +34,28 @@ def load_rss_data_with_pkt_types(fp: str, orientation: int) -> dict:
         if '#' in line:
             continue
         data = line.rstrip().split(',')
-        pkt_type = int(data[8])
+        pkt_type = int(data[9])
         if pkt_type not in result:
             result[pkt_type] = []
         # rotate at (0, 0), the dock location
         if (orientation % 4) is 0:
             loc_x = float(data[0])
             loc_y = float(data[1])
+            orient = float(data[2]) % (2 * np.pi)
         elif (orientation % 4) is 1:
             loc_x = -float(data[1])
             loc_y = float(data[0])
+            orient = (float(data[2]) - 0.5 * np.pi) % (2 * np.pi)
         elif (orientation % 4) is 2:
             loc_x = -float(data[0])
             loc_y = -float(data[1])
+            orient = (float(data[2]) - np.pi) % (2 * np.pi)
         elif (orientation % 4) is 3:
             loc_x = float(data[1])
             loc_y = -float(data[0])
+            orient = (float(data[2]) + 0.5 * np.pi) % (2 * np.pi)
         # only need to take x, y, RSS for now
-        result[pkt_type].append([loc_x, loc_y, float(data[4])])
+        result[pkt_type].append([loc_x, loc_y, float(data[5]), orient])
     return result
 
 
@@ -59,10 +63,12 @@ def blocking_display_rss_map(rss_map: np.ndarray):
     '''
     '''
     plt.imshow(
-        np.transpose(rss_map),
+        np.transpose(rss_map) - np.nanmedian(rss_map),
         cmap='hot',
         origin='lower',
-        interpolation='nearest'
+        interpolation='nearest',
+        vmin=-15,
+        vmax=15
     )
     plt.colorbar()
     # plt.show()
@@ -103,7 +109,7 @@ def convert_to_pickle_rss(fp: str, orientation: int, visualize: bool):
     
     # convert it to a map
     # rss_map_dict = {}
-    rss_map = np.ones((PICKLE_MAP_SIZE, PICKLE_MAP_SIZE)) * (-85.0)
+    rss_map = np.ones((PICKLE_MAP_SIZE, PICKLE_MAP_SIZE)) * -85.0
     factor = 0.75
 
     for i in range(PICKLE_MAP_SIZE):
@@ -131,39 +137,17 @@ def convert_to_pickle_rss(fp: str, orientation: int, visualize: bool):
                 upper_bound_y + factor * PICKLE_MAP_STEP
             )
             data_fullfilled = data_part[2, data_y_idxs]
+            # orientation_fullfilled = data_part[3, data_y_idxs]
+            # data_fullfilled[(orientation_fullfilled > 0.5 * np.pi) & (orientation_fullfilled < 1.5 * np.pi)] = data_fullfilled[(orientation_fullfilled > 0.5 * np.pi) & (orientation_fullfilled < 1.5 * np.pi)] + 10.0
+            # data_fullfilled[(orientation_fullfilled > 0.1 * np.pi) & (orientation_fullfilled < 0.5 * np.pi)] = data_fullfilled[(orientation_fullfilled > 0.1 * np.pi) & (orientation_fullfilled < 0.5 * np.pi)] + 5.0
+            # data_fullfilled[(orientation_fullfilled > 1.5 * np.pi) & (orientation_fullfilled < 1.9 * np.pi)] = data_fullfilled[(orientation_fullfilled > 1.5 * np.pi) & (orientation_fullfilled < 1.9 * np.pi)] + 5.0
             if data_fullfilled.size:
                 rss_map[i, j] = max(np.median(data_fullfilled), -85.0)
-
-    # del data
-    # for i in range(PICKLE_MAP_SIZE):
-    #     for j in range(PICKLE_MAP_SIZE):
-
-    #         left_block = rss_map_dict.get(i-1, {}).get(j, np.array([]))
-    #         top_block = rss_map_dict.get(i, {}).get(j-1, np.array([]))
-    #         right_block = rss_map_dict.get(i+1, {}).get(j, np.array([]))
-    #         bottom_block = rss_map_dict.get(i, {}).get(j+1, np.array([]))
-    #         extra_blocks = np.concatenate((left_block, top_block), axis=0)
-    #         extra_blocks = np.concatenate((extra_blocks, right_block), axis=0)
-    #         extra_blocks = np.concatenate((extra_blocks, bottom_block), axis=0)
-    #         center_block = rss_map_dict.get(i, {}).get(j, np.array([]))
-
-    #         extra_val = np.median(extra_blocks) if extra_blocks.size else None
-    #         center_val = np.median(center_block) if center_block.size else None
-
-    #         if center_val is None:
-    #             if extra_val is None:
-    #                 rss_map[i, j] = -85.0
-    #                 continue
-    #             center_val = extra_val
-    #         if extra_val is None:
-    #             extra_val = center_val
-    #         rss_map[i, j] = max(1 * center_val, -85.0)
-
 
     if visualize:
         blocking_display_rss_map(rss_map)
 
-    with open(fp.replace(".csv", "_map.pickle"), "wb") as f:
+    with open(fp.replace(".csv", "_pkttype_{}_map.pickle".format(pkt_types[0][0])), "wb") as f:
         pickle.dump(rss_map, f)
 
 
@@ -186,17 +170,17 @@ def extract_dev_from_combined(fp, minimalCounts=100, cleanup=True):
 
     for line in lines[1:]:
         tmp = line.rstrip().split(",")
-        addr = tmp[2].replace(":", "")
+        addr = tmp[3].replace(":", "")
         if addr not in files:
             files[addr] = []
-        files[addr].append(",".join(tmp[:2] + tmp[3:]))
+        files[addr].append(",".join(tmp[:3] + tmp[4:]))
 
     for addr in list(files.keys()):
         if len(files[addr]) < minimalCounts:
             del files[addr]
 
     title = lines[0].rstrip().split(",")
-    headline = ",".join(title[:2] + title[3:]) + "\n"
+    headline = ",".join(title[:3] + title[4:]) + "\n"
     filepaths = []
 
     for addr in files.keys():
@@ -228,7 +212,7 @@ def combine_sig_loc(sig_fp, loc_fp):
     len_loc = len(loc_data)
     outfile = "{0}_sig.csv".format(filename.rstrip("_loc"))
     with open(outfile, 'w') as f:
-        f.write("#x,y," + sig_data[0][1:])
+        f.write("#x,y,orient," + sig_data[0][1:])
         prev_i_s = 0
         prev_i_l = 0
         while i_s < len_sig:
@@ -242,10 +226,11 @@ def combine_sig_loc(sig_fp, loc_fp):
             epoch_loc = float(loc_tmp[2]) / 1000.0
             x = float(loc_tmp[3])
             y = float(loc_tmp[4])
+            orientation = float(loc_tmp[5])
             if epoch_sig > epoch_loc and i_l < len_loc - 1:
                 i_l += 1
                 continue
-            f.write("{},{},{}\n".format(x, y, ",".join(sig_tmp)))
+            f.write("{},{},{},{}\n".format(x, y, orientation, ",".join(sig_tmp)))
             i_s += 1
     return outfile
 
