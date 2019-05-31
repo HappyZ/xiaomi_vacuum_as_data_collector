@@ -59,27 +59,39 @@ def load_rss_data_with_pkt_types(fp: str, orientation: int) -> dict:
     return result
 
 
-def blocking_display_rss_map(rss_map: np.ndarray):
+def blocking_display_rss_map(rss_map: np.ndarray, visualize: bool = False, output_map: bool = False, fp: str = None):
     '''
     '''
     plt.imshow(
         np.transpose(rss_map),
         cmap='hot',
         origin='lower',
-        interpolation='nearest'
+        interpolation='nearest',
+        vmin=-80.0,
+        vmax=-40.0
     )
     plt.colorbar()
     # plt.show()
     plt.draw()
-    plt.pause(0.1)
-    q = input("press Enter to continue... type q to quit: ")
-    if q == 'q':
-        sys.exit()
+    if output_map:
+        plt.savefig("{}.png".format(fp), dpi=50)
+    if visualize:
+        plt.pause(0.1)
+        q = input("press Enter to continue... type q to quit: ")
+        if q == 'q':
+            sys.exit()
     plt.close()
     print()
 
 
-def convert_to_pickle_rss(fp: str, orientation: int, visualize: bool = False, filters: int = None):
+def convert_to_pickle_rss(
+    fp: str, 
+    orientation: int,
+    visualize: bool = False, 
+    output_map: bool = False,
+    filters: int = None,
+    sampling: bool = False
+):
     '''
     modified from Zhuolin
     '''
@@ -149,18 +161,25 @@ def convert_to_pickle_rss(fp: str, orientation: int, visualize: bool = False, fi
             elif filters is 5:
                 data_fullfilled = data_fullfilled[(orientation_fullfilled > 0.5 * np.pi) & (orientation_fullfilled < 1.5 * np.pi)]
             if data_fullfilled.size:
-                rss_map[i, j] = max(np.median(data_fullfilled), -85.0)
+                if sampling:
+                    rss_map[i, j] = max(np.random.choice(data_fullfilled, 1)[0], -85.0)
+                else:
+                    rss_map[i, j] = max(np.median(data_fullfilled), -85.0)
 
-    if visualize:
-        blocking_display_rss_map(rss_map)
+    filepath = fp.replace(
+        ".csv", "{}_pkt_{}_map{}_{}"
+        .format(
+            "_s{}".format(np.random.randint(0, 999999)) if sampling else "",
+            pkt_types[0][0], 
+            "" if filters is None else "_{}".format(filters),
+            "h" if (orientation % 2) is 0 else "v"
+        )
+    )
 
-    with open(
-        fp.replace(
-            ".csv", "_pkttype_{}_map{}.pickle"
-            .format(pkt_types[0][0], "" if filters is None else "_{}".format(filters))
-        ),
-        "wb"
-    ) as f:
+    if visualize or output_map:
+        blocking_display_rss_map(rss_map, visualize=visualize, output_map=output_map, fp=filepath)
+
+    with open("{}.pickle".format(filepath), "wb") as f:
         pickle.dump(rss_map, f)
 
 

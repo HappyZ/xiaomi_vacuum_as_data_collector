@@ -65,7 +65,16 @@ def generate_floorplan_map(f_map, f_loc, f_sig_extracted, is_csi):
             f.write(augmented_map.getvalue())
 
 
-def convert_to_pickle(filepaths, orientation, visualize, is_csi):
+def convert_to_pickle(
+    filepaths, 
+    orientation, 
+    filters=None,
+    visualize=False, 
+    is_csi=False,
+    output_map=False,
+    sampling=False, 
+    sampling_num=5
+):
     '''
     '''
     if is_csi:
@@ -73,16 +82,30 @@ def convert_to_pickle(filepaths, orientation, visualize, is_csi):
         return
     for filepath in filepaths:
         print("parsing file: {}".format(filepath))
-        try:
-            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=None)
-            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=0)
-            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=1)
-            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=2)
-            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=3)
-            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=4)
-            convert_to_pickle_rss(filepath, orientation, visualize=visualize, filters=5)
-        except KeyboardInterrupt:
-            print("KeyboardInterrupt happened")
+        if not sampling:
+            sampling_num = 1
+        for __ in range(sampling_num):
+            try:
+                if filters is 6:
+                    for fff in range(0, 6):
+                        convert_to_pickle_rss(
+                            filepath, orientation,
+                            visualize=visualize,
+                            output_map=output_map,
+                            filters=fff,
+                            sampling=sampling
+                        )
+                else:
+                    convert_to_pickle_rss(
+                        filepath, orientation,
+                        visualize=visualize,
+                        output_map=output_map,
+                        filters=filters,
+                        sampling=sampling
+                    )
+            except KeyboardInterrupt:
+                print("KeyboardInterrupt happened")
+                return
 
 
 def main(args):
@@ -101,7 +124,16 @@ def main(args):
 
     if args.pickle:
         # f_sig_extracted = [x for x in f_sig_extracted if '98fc11691fc5' in x]
-        convert_to_pickle(f_sig_extracted, args.orientation, args.visualize, is_csi)
+        convert_to_pickle(
+            f_sig_extracted,
+            args.orientation,
+            filters=args.filters,
+            visualize=args.visualize,
+            is_csi=is_csi,
+            output_map=args.visualize_dump,
+            sampling=args.sampling,
+            sampling_num=args.sampling_num
+        )
 
     # generate path in map for visualization
     if args.map:
@@ -131,11 +163,39 @@ if __name__ == '__main__':
         help='Enable to dump into pickle images'
     )
     parser.add_argument(
+        '--filters',
+        dest='filters',
+        type=int,
+        default=None,
+        help='Set filters to extract only 0: >, 1: v, 2: <, 3: ^, 4: <^>, 5: <v>, 6: all'
+    )
+    parser.add_argument(
+        '--sampling',
+        dest='sampling',
+        action='store_true',
+        default=False,
+        help='Enable subsampling to generate more data'
+    )
+    parser.add_argument(
+        '--sampling-num',
+        dest='sampling_num',
+        type=int,
+        default=10,
+        help='If subsampling enabled, set the number of random samples performed'
+    )
+    parser.add_argument(
         '--visualize', '-v',
         dest='visualize',
         action='store_true',
         default=False,
         help='Enable to visualize map images while dumping to pickles'
+    )
+    parser.add_argument(
+        '--visualize-dump', '-vd',
+        dest='visualize_dump',
+        action='store_true',
+        default=False,
+        help='Enable to dump images while dumping to pickles'
     )
     parser.add_argument(
         '--orient',
