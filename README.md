@@ -169,8 +169,16 @@ optional arguments:
   -h, --help            show this help message and exit
   --map                 Enable to generate map images with scanned floorplan
   --pickle              Enable to dump into pickle images
+  --filters FILTERS     Set filters to extract only 0: >, 1: v, 2: <, 3: ^, 4:
+                        <^>, 5: <v>, 6: all
+  --sampling            Enable subsampling to generate more data
+  --sampling-num SAMPLING_NUM
+                        If subsampling enabled, set the number of random
+                        samples performed
   --visualize, -v       Enable to visualize map images while dumping to
                         pickles
+  --visualize-dump, -vd
+                        Enable to dump images while dumping to pickles
   --orient ORIENTATION  Specify orientation of the map
 ```
 
