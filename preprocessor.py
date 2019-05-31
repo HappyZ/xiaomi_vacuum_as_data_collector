@@ -167,7 +167,7 @@ if __name__ == '__main__':
         dest='filters',
         type=int,
         default=None,
-        help='Set filters to extract only 0: >, 1: v, 2: <, 3: ^, 4: <^>, 5: <v>, 6: all'
+        help='Ignore the arg by default, set to x to extract only y `0: >`, `1: v`, `2: <`, `3: ^`, `4: <^>`, `5: <v>`, `6: all`'
     )
     parser.add_argument(
         '--sampling',
