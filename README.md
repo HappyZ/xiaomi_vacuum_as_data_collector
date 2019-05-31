@@ -156,8 +156,9 @@ It will automatically extracts all RSS values from pcap file for each MAC addres
 Commands details:
 
 ```
-usage: preprocessor.py [-h] [--map] [--pickle] [--visualize]
-                       [--orient ORIENTATION]
+usage: preprocessor.py [-h] [--map] [--pickle] [--filters FILTERS]
+                       [--sampling] [--sampling-num SAMPLING_NUM]
+                       [--visualize] [--visualize-dump] [--orient ORIENTATION]
                        folder
 
 Data Pre-Processor
