@@ -11,23 +11,7 @@ from libs.parser_post import convert_to_pickle_rss
 from libs.parser_post import get_locs_from_slam_data
 from libs.parser_post import get_locs_from_parsed_sig_data
 from libs.parser_post import extract_dev_from_combined
-
-
-def get_groundtruth_dict(f_gt):
-    gt = {}
-    if f_gt is None:
-        return gt
-    with open(f_gt, 'r') as f:
-        lines = f.readlines()
-    for line in lines:
-        if '#' in line:
-            continue
-        tmp = line.rstrip('\n').split(',')
-        addr = tmp[0]
-        loc_x = float(tmp[1])
-        loc_y = float(tmp[2])
-        gt[addr] = [loc_x, loc_y]
-    return gt
+from libs.parser_post import get_groundtruth_dict
 
 
 def get_files(folder):

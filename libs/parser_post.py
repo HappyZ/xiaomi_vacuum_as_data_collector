@@ -22,6 +22,22 @@ PICKLE_MAP_STEP = 0.1  # meter
 np.set_printoptions(threshold=sys.maxsize)
 
 
+def get_groundtruth_dict(f_gt):
+    gt = {}
+    if f_gt is None:
+        return gt
+    with open(f_gt, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        if '#' in line:
+            continue
+        tmp = line.rstrip('\n').split(',')
+        addr = tmp[0]
+        loc_x = float(tmp[1])
+        loc_y = float(tmp[2])
+        gt[addr] = np.array([loc_x, loc_y])
+    return gt
+
 
 def load_rss_data_with_pkt_types(fp: str, orientation: int) -> dict:
     '''
