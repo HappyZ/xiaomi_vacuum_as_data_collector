@@ -18,6 +18,7 @@ scp ./libs/parser.py ${REMOTE_EXP_FP}/libs/
 scp ./get_loc_est.py ${REMOTE_EXP_FP}
 
 echo "Install necessary packages"
+${REMOTE_CMD} apt update
 ${REMOTE_CMD} apt --yes install python3-minimal
 
 echo "Done!"
