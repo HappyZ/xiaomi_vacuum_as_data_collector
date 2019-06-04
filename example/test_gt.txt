@@ -1,3 +1,4 @@
+#   mac addr,  x,  y in the generated rss map
 10a4be8db0d2, 53, 21
 10a4bec51ff4,  3, 48
 10a4beca20ad, 30,  5
