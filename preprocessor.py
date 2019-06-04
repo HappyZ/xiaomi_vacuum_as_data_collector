@@ -13,11 +13,29 @@ from libs.parser_post import get_locs_from_parsed_sig_data
 from libs.parser_post import extract_dev_from_combined
 
 
+def get_groundtruth_dict(f_gt):
+    gt = {}
+    if f_gt is None:
+        return gt
+    with open(f_gt, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        if '#' in line:
+            continue
+        tmp = line.rstrip('\n').split(',')
+        addr = tmp[0]
+        loc_x = float(tmp[1])
+        loc_y = float(tmp[2])
+        gt[addr] = [loc_x, loc_y]
+    return gt
+
+
 def get_files(folder):
     files = os.listdir(folder)
     f_map_image = None
     f_loc_est = None
     f_sig_data = None
+    f_groundtruth = None
     is_csi = False
     for file in files:
         if '.pcap' in file:
@@ -28,7 +46,9 @@ def get_files(folder):
             f_loc_est = "{0}/{1}".format(folder, file)
         elif 'map.ppm' in file:
             f_map_image = "{0}/{1}".format(folder, file)
-    return f_map_image, f_loc_est, f_sig_data, is_csi
+        elif 'gt.txt' in file:
+            f_groundtruth = "{0}/{1}".format(folder, file)
+    return f_map_image, f_loc_est, f_sig_data, f_groundtruth, is_csi
 
 
 def generate_floorplan_map(f_map, f_loc, f_sig_extracted, is_csi):
@@ -67,7 +87,8 @@ def generate_floorplan_map(f_map, f_loc, f_sig_extracted, is_csi):
 
 def convert_to_pickle(
     filepaths, 
-    orientation, 
+    orientation,
+    groundtruth=None,
     filters=None,
     visualize=False, 
     is_csi=False,
@@ -90,6 +111,7 @@ def convert_to_pickle(
                     for fff in range(0, 6):
                         convert_to_pickle_rss(
                             filepath, orientation,
+                            labels=groundtruth.get(os.path.splitext(os.path.basename(filepath))[0], None),
                             visualize=visualize,
                             output_map=output_map,
                             filters=fff,
@@ -98,6 +120,7 @@ def convert_to_pickle(
                 else:
                     convert_to_pickle_rss(
                         filepath, orientation,
+                        labels=groundtruth.get(os.path.splitext(os.path.basename(filepath))[0], None),
                         visualize=visualize,
                         output_map=output_map,
                         filters=filters,
@@ -112,7 +135,7 @@ def main(args):
     if not os.path.isdir(args.folder):
         print("Err: folder {} does not exist".format(args.folder))
         sys.exit(2)
-    f_map, f_loc, f_sig, is_csi = get_files(args.folder)
+    f_map, f_loc, f_sig, f_gt, is_csi = get_files(args.folder)
     if f_loc is None or f_sig is None:
         print("Err: desired files not exist")
         sys.exit(2)
@@ -122,11 +145,14 @@ def main(args):
     f_sig_combined = combine_sig_loc(f_sig_parsed, f_loc)
     f_sig_extracted = extract_dev_from_combined(f_sig_combined, minimalCounts=5000)
 
+    gts = get_groundtruth_dict(f_gt)
+
     if args.pickle:
         # f_sig_extracted = [x for x in f_sig_extracted if '98fc11691fc5' in x]
         convert_to_pickle(
             f_sig_extracted,
             args.orientation,
+            groundtruth=gts,
             filters=args.filters,
             visualize=args.visualize,
             is_csi=is_csi,

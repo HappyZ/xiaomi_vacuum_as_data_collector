@@ -87,6 +87,7 @@ def blocking_display_rss_map(rss_map: np.ndarray, visualize: bool = False, outpu
 def convert_to_pickle_rss(
     fp: str, 
     orientation: int,
+    labels: list = None,  # the right groundtruth in rss map pixels
     visualize: bool = False, 
     output_map: bool = False,
     filters: int = None,
@@ -167,7 +168,7 @@ def convert_to_pickle_rss(
                     rss_map[i, j] = max(np.median(data_fullfilled), -85.0)
 
     filepath = fp.replace(
-        ".csv", "{}_pkt_{}_map{}_{}"
+        ".csv", "{}_pkttype_{}_map{}_{}"
         .format(
             "_s{}".format(np.random.randint(0, 999999)) if sampling else "",
             pkt_types[0][0], 
@@ -180,7 +181,7 @@ def convert_to_pickle_rss(
         blocking_display_rss_map(rss_map, visualize=visualize, output_map=output_map, fp=filepath)
 
     with open("{}.pickle".format(filepath), "wb") as f:
-        pickle.dump(rss_map, f)
+        pickle.dump([rss_map, labels], f)
 
 
 def extract_dev_from_combined(fp, minimalCounts=100, cleanup=True):
