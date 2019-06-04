@@ -147,7 +147,7 @@ After we get the `.pcap` file collected from phone, put the downloaded files (`*
 Then run
 
 ```
-python preprocessor.py <folder path> --pickle -v --orient 0
+python preprocessor.py <folder path> --pickle -vd --orient 0
 ```
 
 It will automatically extracts all RSS values from pcap file for each MAC address, and plot the `.png` figure with the RSS values being the red alpha channel (opacity) on the trace.
