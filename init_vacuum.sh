@@ -20,5 +20,11 @@ scp ./get_loc_est.py ${REMOTE_EXP_FP}
 echo "Install necessary packages"
 ${REMOTE_CMD} apt update
 ${REMOTE_CMD} apt --yes install python3-minimal
+${REMOTE_CMD} apt --yes install wget
+${REMOTE_CMD} apt --yes install unzip
+
+echo "Install adb"
+${REMOTE_CMD} wget -O ${REMOTE_EXP_FP}/adbs.zip https://dl.google.com/android/repository/platform-tools-latest-linux.zip
+${REMOTE_CMD} unzip ${REMOTE_EXP_FP}/adbs.zip -d ${REMOTE_EXP_FP}
 
 echo "Done!"
