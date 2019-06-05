@@ -55,4 +55,4 @@ CATKIN_IGNORE
 .setup.sh
 config.json
 data
-example/20190505_170223_sig/*
+example_orient_0/20190505_170223_sig/*

@@ -97,7 +97,6 @@ def blocking_display_rss_map(rss_map: np.ndarray, visualize: bool = False, outpu
         if q == 'q':
             sys.exit()
     plt.close()
-    print()
 
 
 def convert_to_pickle_rss(
