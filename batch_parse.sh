@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 LOG_FILE=batch_parse.log
 PYTHON=python
@@ -61,7 +61,7 @@ for folder in ${1%/}/*; do
     fi
 
     echo "processing folder: ${folder}.." >> $LOG_FILE 2>&1
-    
+
     echo "########################################"
     echo "     processing folder: ${folder}.."
     echo "########################################"
