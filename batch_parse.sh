@@ -67,7 +67,7 @@ for folder in ${1%/}/*; do
     echo "########################################"
     echo "     clearing *_sig folders under ${folder}.."
     echo "########################################"
-    find $folder -name "*_sig" -type d -empty -delete
+    find $folder -name "*_sig" -type d -exec rm -r {} \; > /dev/null 2>&1
 
     echo "########################################"
     echo "     processing folder: ${folder}.."
@@ -78,9 +78,6 @@ for folder in ${1%/}/*; do
         echo "missing required files.."
         continue
     fi
-    echo "########################################"
-    echo "     default"
-    echo "########################################"
     for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
         cp ${file} ${2}_all/${PREFIX}_$(basename ${file})
         mv ${file} $MOVE_TO_FOLDER/${PREFIX}_$(basename ${file})
@@ -97,7 +94,7 @@ for folder in ${1%/}/*; do
     echo "########################################"
     echo "     extract based on moving direction"
     echo "########################################"
-    if [ $MOVE_TO_FOLDER = "${2}_horiz" ]; then
+    if [ $ORIENT = "0" ] || [ $ORIENT = "2" ]; then
         ${PYTHON} preprocessor.py "${folder}" --pickle -vd --filters 0 >> $LOG_FILE 2>&1
         for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
             mv ${file} ${2}_direction_0/${PREFIX}_$(basename ${file})
@@ -106,7 +103,7 @@ for folder in ${1%/}/*; do
         for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
             mv ${file} ${2}_direction_2/${PREFIX}_$(basename ${file})
         done
-    elif [ $MOVE_TO_FOLDER = "${2}_verti" ]; then
+    elif [ $ORIENT = "1" ] || [ $ORIENT = "3" ]; then
         ${PYTHON} preprocessor.py "${folder}" --pickle -vd --filters 1 >> $LOG_FILE 2>&1
         for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
             mv ${file} ${2}_direction_1/${PREFIX}_$(basename ${file})
