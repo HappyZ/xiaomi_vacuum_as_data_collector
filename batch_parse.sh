@@ -63,6 +63,11 @@ for folder in ${1%/}/*; do
     echo "processing folder: ${folder}.." >> $LOG_FILE 2>&1
 
     echo "########################################"
+    echo "     clearing *_sig folders under ${folder}.."
+    echo "########################################"
+    find $folder -name "*_sig" -type d -empty -delete
+
+    echo "########################################"
     echo "     processing folder: ${folder}.."
     echo "########################################"
 
@@ -82,10 +87,10 @@ for folder in ${1%/}/*; do
     echo "########################################"
     echo "     subsampling"
     echo "########################################"
-    # ${PYTHON} preprocessor.py "${folder}" --pickle -vd --sampling --sampling-num ${SAMPLING_NUM} > $LOG_FILE 2>&1
-    # for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
-    #     mv ${file} ${2}_subsampled/
-    # done
+    ${PYTHON} preprocessor.py "${folder}" --pickle -vd --sampling --sampling-num ${SAMPLING_NUM} > $LOG_FILE 2>&1
+    for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
+        mv ${file} ${2}_subsampled/
+    done
 
     echo "########################################"
     echo "     extract based on moving direction"
