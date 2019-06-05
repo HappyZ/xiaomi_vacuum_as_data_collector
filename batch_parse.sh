@@ -60,6 +60,8 @@ for folder in ${1%/}/*; do
         continue
     fi
 
+    PREFIX=$(echo $(basename ${folder}) | cut -d"_" -f1,2,3)
+
     echo "processing folder: ${folder}.." >> $LOG_FILE 2>&1
 
     echo "########################################"
@@ -80,8 +82,8 @@ for folder in ${1%/}/*; do
     echo "     default"
     echo "########################################"
     for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
-        cp ${file} ${2}_all/
-        mv ${file} $MOVE_TO_FOLDER/
+        cp ${file} ${2}_all/${PREFIX}_$(basename ${file})
+        mv ${file} $MOVE_TO_FOLDER/${PREFIX}_$(basename ${file})
     done
 
     echo "########################################"
@@ -89,7 +91,7 @@ for folder in ${1%/}/*; do
     echo "########################################"
     ${PYTHON} preprocessor.py "${folder}" --pickle -vd --sampling --sampling-num ${SAMPLING_NUM} > $LOG_FILE 2>&1
     for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
-        mv ${file} ${2}_subsampled/
+        mv ${file} ${2}_subsampled/${PREFIX}_$(basename ${file})
     done
 
     echo "########################################"
@@ -98,20 +100,20 @@ for folder in ${1%/}/*; do
     if [ $MOVE_TO_FOLDER = "${2}_horiz" ]; then
         ${PYTHON} preprocessor.py "${folder}" --pickle -vd --filters 0 >> $LOG_FILE 2>&1
         for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
-            mv ${file} ${2}_direction_0/
+            mv ${file} ${2}_direction_0/${PREFIX}_$(basename ${file})
         done
         ${PYTHON} preprocessor.py "${folder}" --pickle -vd --filters 2 >> $LOG_FILE 2>&1
         for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
-            mv ${file} ${2}_direction_2/
+            mv ${file} ${2}_direction_2/${PREFIX}_$(basename ${file})
         done
     elif [ $MOVE_TO_FOLDER = "${2}_verti" ]; then
         ${PYTHON} preprocessor.py "${folder}" --pickle -vd --filters 1 >> $LOG_FILE 2>&1
         for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
-            mv ${file} ${2}_direction_1/
+            mv ${file} ${2}_direction_1/${PREFIX}_$(basename ${file})
         done
         ${PYTHON} preprocessor.py "${folder}" --pickle -vd --filters 3 >> $LOG_FILE 2>&1
         for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
-            mv ${file} ${2}_direction_3/
+            mv ${file} ${2}_direction_3/${PREFIX}_$(basename ${file})
         done
     fi
 done
