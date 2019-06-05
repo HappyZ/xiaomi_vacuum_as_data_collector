@@ -184,12 +184,11 @@ def convert_to_pickle_rss(
                     rss_map[i, j] = max(np.median(data_fullfilled), -85.0)
 
     filepath = fp.replace(
-        ".csv", "{}_pkttype_{}_map{}_{}"
+        ".csv", "{}_pkttype_{}_map{}"
         .format(
             "_s{}".format(np.random.randint(0, 999999)) if sampling else "",
             pkt_types[0][0], 
-            "" if filters is None else "_{}".format(filters),
-            "h" if (orientation % 2) is 0 else "v"
+            "" if filters is None else "_{}".format(filters)
         )
     )
 
