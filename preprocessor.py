@@ -119,6 +119,9 @@ def main(args):
     if not os.path.isdir(args.folder):
         print("Err: folder {} does not exist".format(args.folder))
         sys.exit(2)
+    if 'orient' in args.folder:
+        orientation = int(args.folder.rstrip('/').split('_')[-1])
+        print("orientation: {}".format(orientation))
     f_map, f_loc, f_sig, f_gt, is_csi = get_files(args.folder)
     if f_loc is None or f_sig is None:
         print("Err: desired files not exist")
