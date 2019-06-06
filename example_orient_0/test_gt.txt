@@ -1,6 +1,6 @@
 #   mac addr,  x,  y in the generated rss map
-10a4be8db0d2, 53, 21
-10a4bec51ff4,  3, 48
-10a4beca20ad, 30,  5
-98fc11691fc5, 35, 24
-9c8ecd102ace, 59, 46
+10a4be8db0d2, 21, 53
+10a4bec51ff4, 48,  3
+10a4beca20ad,  5, 30
+98fc11691fc5, 24, 35
+9c8ecd102ace, 46, 59
