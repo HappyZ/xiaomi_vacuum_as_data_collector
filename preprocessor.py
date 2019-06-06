@@ -78,7 +78,8 @@ def convert_to_pickle(
     is_csi=False,
     output_map=False,
     sampling=False, 
-    sampling_num=5
+    sampling_num=5,
+    map_dim=None
 ):
     '''
     '''
@@ -99,7 +100,8 @@ def convert_to_pickle(
                             visualize=visualize,
                             output_map=output_map,
                             filters=fff,
-                            sampling=sampling
+                            sampling=sampling,
+                            map_dim=map_dim
                         )
                 else:
                     convert_to_pickle_rss(
@@ -108,7 +110,8 @@ def convert_to_pickle(
                         visualize=visualize,
                         output_map=output_map,
                         filters=filters,
-                        sampling=sampling
+                        sampling=sampling,
+                        map_dim=map_dim
                     )
             except KeyboardInterrupt:
                 print("KeyboardInterrupt happened")
@@ -217,6 +220,18 @@ if __name__ == '__main__':
         default=0,
         help='Specify orientation of the map'
     )
+    parser.add_argument(
+        '--dimension',
+        dest='dimension',
+        default=None,
+        help='Specify dimension/size of the map via `--dimension="width height"`, default 64x64'
+    )
     args, __ = parser.parse_known_args()
+
+    try:
+        args.dimension = [int(x) for x in args.dimension.split(" ")]
+    except BaseException:
+        print("err parsing dimension..")
+        exit(2)
 
     main(args)

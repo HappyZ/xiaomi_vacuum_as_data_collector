@@ -106,7 +106,8 @@ def convert_to_pickle_rss(
     visualize: bool = False, 
     output_map: bool = False,
     filters: int = None,
-    sampling: bool = False
+    sampling: bool = False,
+    map_dim: tuple = None
 ):
     '''
     modified from Zhuolin
@@ -117,6 +118,10 @@ def convert_to_pickle_rss(
 
     # load data and split into different types
     results = load_rss_data_with_pkt_types(fp, orientation)
+
+    # define map dimension
+    if map_dim is None:
+        map_dim = (PICKLE_MAP_SIZE, PICKLE_MAP_SIZE)
 
     # pick the most frequent type
     pkt_types = [(key, len(results[key])) for key in results.keys()]
@@ -135,14 +140,14 @@ def convert_to_pickle_rss(
     
     # convert it to a map
     # rss_map_dict = {}
-    rss_map = np.ones((PICKLE_MAP_SIZE, PICKLE_MAP_SIZE)) * -85.0
+    rss_map = np.ones(map_dim) * -85.0
     factor = 0.75
 
-    for i in range(PICKLE_MAP_SIZE):
+    for i in range(map_dim[0]):
         # if i not in rss_map_dict:
         #     rss_map_dict[i] = {}
         # search for x_idx
-        upper_bound_x = loc_x_center + PICKLE_MAP_STEP * (i - (PICKLE_MAP_SIZE / 2) + 0.5)
+        upper_bound_x = loc_x_center + PICKLE_MAP_STEP * (i - (map_dim[0] / 2) + 0.5)
         lower_bound_x = upper_bound_x - PICKLE_MAP_STEP
         data_x_idxs = find_index(
             data[0, :],
@@ -153,9 +158,9 @@ def convert_to_pickle_rss(
         if data_part.size is 0:
             continue
         data_y_idx = 0
-        for j in range(PICKLE_MAP_SIZE):
+        for j in range(map_dim[1]):
             # search for y_idx
-            upper_bound_y = loc_y_center + PICKLE_MAP_STEP * (j - (PICKLE_MAP_SIZE / 2) + 0.5)
+            upper_bound_y = loc_y_center + PICKLE_MAP_STEP * (j - (map_dim[1] / 2) + 0.5)
             lower_bound_y = upper_bound_y - PICKLE_MAP_STEP
             data_y_idxs = find_index(
                 data_part[1, :],
