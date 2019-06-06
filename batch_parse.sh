@@ -83,7 +83,7 @@ for folder in ${1%/}/*; do
     echo "########################################"
     echo "     extracting floormap.."
     echo "########################################"
-    ${PYTHON} preprocessor.py "${folder}" --map -vd
+    ${PYTHON} preprocessor.py "${folder}" --map -vd >> $LOG_FILE 2>&1
     for file in $(find ${folder} -name "*.png"); do
         mv ${file} ${2}_floormap/${PREFIX}_floormap.png
     done
