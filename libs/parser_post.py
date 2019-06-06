@@ -99,7 +99,7 @@ def blocking_display_rss_map(
     # plt.show()
     plt.draw()
     if output_map:
-        plt.savefig("{}.png".format(fp.replace("_map", "_floormap")), dpi=50)
+        plt.savefig("{}.png".format(fp), dpi=50)
     if visualize:
         plt.pause(0.1)
         q = input("press Enter to continue... type q to quit: ")
