@@ -35,40 +35,6 @@ def get_files(folder):
     return f_map_image, f_loc_est, f_sig_data, f_groundtruth, is_csi
 
 
-def generate_floorplan_map(f_map, f_loc, f_sig_extracted, is_csi):
-    '''
-    generate maps for path and signals
-    '''
-
-    # get map image
-    with open(f_map, 'rb') as f:
-        map_image_data = f.read()
-
-    # build a general map without signal
-    with open(f_loc) as f:
-        # skip the first line which is coumn names
-        slam_data = f.readlines()[1:]
-    augmented_map = build_map(
-        get_locs_from_slam_data(slam_data),
-        map_image_data
-    )
-    filepath, ext = os.path.splitext(f_map)
-    with open("{}.png".format(filepath), 'wb') as f:
-        f.write(augmented_map.getvalue())
-
-    for f_each in f_sig_extracted:
-        with open(f_each) as f:
-            # skip the first line which is coumn names
-            parsed_sig_data = f.readlines()[1:]
-        augmented_map = build_map(
-            get_locs_from_parsed_sig_data(parsed_sig_data, is_csi),
-            map_image_data
-        )
-        filepath, ext = os.path.splitext(f_each)
-        with open("{}.png".format(filepath), 'wb') as f:
-            f.write(augmented_map.getvalue())
-
-
 def convert_to_pickle(
     filepaths, 
     orientation,
@@ -135,7 +101,7 @@ def main(args):
 
     # parse pcap into csv, and add location if it has one
     f_sig_parsed = translate_pcap(f_sig, is_csi)
-    f_sig_combined = combine_sig_loc(f_sig_parsed, f_loc)
+    f_sig_combined, minmax_xys = combine_sig_loc(f_sig_parsed, f_loc)
     f_sig_extracted = extract_dev_from_combined(f_sig_combined, minimalCounts=5000)
 
     gts = get_groundtruth_dict(f_gt)
@@ -158,7 +124,16 @@ def main(args):
 
     # generate path in map for visualization
     if args.map:
-        generate_floorplan_map(f_map, f_loc, f_sig_extracted, is_csi)
+        build_map(
+            f_map,
+            args.orientation,
+            minmax_xys,
+            markers=gts,
+            visualize=args.visualize,
+            output_map=args.visualize_dump,
+            map_dim=args.dimension,
+            map_res=args.resolution
+        )
 
 
 if __name__ == '__main__':

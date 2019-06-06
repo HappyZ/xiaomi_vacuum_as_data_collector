@@ -19,6 +19,8 @@ from libs.tshark import Tshark
 RED = (255, 0, 0, 255)
 PICKLE_MAP_SIZE = 64   # num
 PICKLE_MAP_STEP = 0.1  # meter
+WALL_PENETRATION = -30.0  # dB
+WALL_REFLECTION = -15.0  # dB
 np.set_printoptions(threshold=sys.maxsize)
 
 
@@ -75,7 +77,14 @@ def load_rss_data_with_pkt_types(fp: str, orientation: int) -> dict:
     return result
 
 
-def blocking_display_rss_map(rss_map: np.ndarray, visualize: bool = False, output_map: bool = False, fp: str = None):
+def blocking_display_rss_map(
+    rss_map: np.ndarray,
+    visualize: bool = False,
+    output_map: bool = False,
+    vmin: float = -80.0,
+    vmax: float = -40.0,
+    fp: str = None
+):
     '''
     '''
     plt.imshow(
@@ -83,14 +92,14 @@ def blocking_display_rss_map(rss_map: np.ndarray, visualize: bool = False, outpu
         cmap='hot',
         origin='lower',
         interpolation='nearest',
-        vmin=-80.0,
-        vmax=-40.0
+        vmin=vmin,
+        vmax=vmax
     )
     plt.colorbar()
     # plt.show()
     plt.draw()
     if output_map:
-        plt.savefig("{}.png".format(fp), dpi=50)
+        plt.savefig("{}.png".format(fp.replace("_map", "_floormap")), dpi=50)
     if visualize:
         plt.pause(0.1)
         q = input("press Enter to continue... type q to quit: ")
@@ -143,7 +152,6 @@ def convert_to_pickle_rss(
     loc_y_center = (loc_y_min + loc_y_max) / 2.0
     
     # convert it to a map
-    # rss_map_dict = {}
     rss_map = np.ones(map_dim) * -85.0
     factor = 0.75
 
@@ -266,6 +274,10 @@ def combine_sig_loc(sig_fp, loc_fp):
     i_l = 1  # remove first line on info
     len_sig = len(sig_data)
     len_loc = len(loc_data)
+    min_x = float('inf')
+    max_x = float('-inf')
+    min_y = float('inf')
+    max_y = float('-inf')
     outfile = "{0}_sig.csv".format(filename.rstrip("_loc"))
     with open(outfile, 'w') as f:
         f.write("#x,y,orient," + sig_data[0][1:])
@@ -282,13 +294,21 @@ def combine_sig_loc(sig_fp, loc_fp):
             epoch_loc = float(loc_tmp[2]) / 1000.0
             x = float(loc_tmp[3])
             y = float(loc_tmp[4])
+            if x > max_x:
+                max_x = x
+            if x < min_x:
+                min_x = x
+            if y > max_y:
+                max_y = y
+            if y < min_y:
+                min_y = y
             orientation = float(loc_tmp[5])
             if epoch_sig > epoch_loc and i_l < len_loc - 1:
                 i_l += 1
                 continue
             f.write("{},{},{},{}\n".format(x, y, orientation, ",".join(sig_tmp)))
             i_s += 1
-    return outfile
+    return outfile, ((min_x, min_y), (max_x, max_y))
 
 
 def translate_pcap(pcap_fp, is_csi):
@@ -345,62 +365,124 @@ def get_locs_from_slam_data(slam_data):
     return locs_data
 
 
-def build_map(locs_data, map_image_data):
+def estimate_orientation(map_dim, reflections):
+    orientations = np.empty(map_dim, dtype=float) * float('nan')
+    for i in range(map_dim[0]):
+        for j in range(map_dim[1]):
+            if reflections[i, j] < -80.0:
+                continue
+            xs = []
+            ys = []
+            for off_i in range(-4, 5, 2):
+                end_i = min(max(i + off_i, 0), map_dim[0]-1)
+                for off_j in range(-4, 5, 2):
+                    end_j = min(max(j + off_j, 0), map_dim[1]-1)
+                    if reflections[end_i, end_j] > -100.0:
+                        if end_i not in xs or end_j not in ys:
+                            xs.append(end_i)
+                            ys.append(end_j)
+            if len(xs) is 0:
+                continue
+            if len(set(xs)) == 1:
+                coefs = [None, 999.0]
+            else:
+                coefs = np.polynomial.polynomial.polyfit(xs, ys, 1)
+            orientations[i, j] = round(np.arctan2(coefs[1], 1.0) * 180 / np.pi, 1)
+    return orientations
+
+
+def build_map(
+    f_map,
+    orientation,
+    minmax_xys,
+    markers=None,
+    visualize=False,
+    output_map=False,
+    map_dim=None,
+    map_res=None
+):
     '''
     draws the path into the map. Returns the new map as a BytesIO
     modded from https://github.com/dgiese/dustcloud/blob/71f7af3e2b9607548bcd845aca251326128f742c/dustcloud/build_map.py
     '''
+    grey = (125, 125, 125, 255)
+    white = (255, 255, 255, 255)
+    blue = (0, 0, 255, 255)
+    pink = (255, 0, 255, 255)
+    red = (255, 0, 0, 255)
+    black = (0, 0, 0, 255)
 
-    def align_xy(xy, center_x, center_y):
-        # set x & y by center of the image
-        # 20 is the factor to fit coordinates in in map
-        x = center_x + (xy[0] * 20)
-        y = center_y + (-xy[1] * 20)
-        return (x, y)
+    # define map dimension
+    if map_dim is None:
+        map_dim = (PICKLE_MAP_SIZE, PICKLE_MAP_SIZE)
+    if map_res is None:
+        map_res = PICKLE_MAP_STEP
+    floor_map = np.zeros(map_dim)
 
+    # define map center x,y
+    center_x_val = (minmax_xys[1][0] + minmax_xys[0][0]) / 2
+    center_y_val = (minmax_xys[1][1] + minmax_xys[0][1]) / 2
+
+    # load map
+    with open(f_map, 'rb') as f:
+        map_image_data = f.read()
 
     map_image = Image.open(io.BytesIO(map_image_data))
     map_image = map_image.convert('RGBA')
+    map_pix = map_image.load()
 
-    # calculate center of the image
-    center_x = map_image.size[0] / 2
-    center_y = map_image.size[0] / 2
+    # calculate center of the measurement
+    center_x = int(map_image.size[0] / 2 + center_x_val * 20)
+    center_y = int(map_image.size[1] / 2 - center_y_val * 20)
 
-    # rotate image by -90°
-    # map_image = map_image.rotate(-90)
+    for i in range(map_dim[0]):
+        idx_x = center_x + map_res * 20 * (i - (map_dim[0] / 2))
+        for j in range(map_dim[1]):
+            idx_y = center_y - map_res * 20 * (j - (map_dim[1] / 2))
+            is_blocked = False
+            for kk in range(2):
+                for ll in range(2):
+                    color = map_pix[idx_x + kk, idx_y + ll]
+                    is_blocked = is_blocked or (color in [black, blue, pink, red])
+            if is_blocked:
+                if orientation % 4 == 0:
+                    floor_map[i, j] = 1
+                elif orientation % 4 == 1:
+                    floor_map[map_dim[1] - j - 1, i] = 1
+                elif orientation % 4 == 2:
+                    floor_map[map_dim[0] - i - 1, map_dim[1] - j - 1] = 1
+                elif orientation % 4 == 3:
+                    floor_map[j, map_dim[1] - i - 1] = 1
+            elif color not in [grey, white]:
+                print("unknown color: {}".format(color))
 
-    grey = (125, 125, 125, 255)  # background color
-    transparent = (0, 0, 0, 0)
+    filepath, ext = os.path.splitext(f_map)
 
-    # prepare for drawing
-    draw = ImageDraw.Draw(map_image)
+    if visualize or output_map:
+        blocking_display_rss_map(
+            floor_map,
+            visualize=visualize,
+            output_map=output_map,
+            fp=filepath,
+            vmin=0.0,
+            vmax=1.0
+        )
 
-    # loop each loc
-    prev_xy = None
-    for loc in locs_data:
-        xy = align_xy(loc[:2], center_x, center_y)
-        if prev_xy:
-            draw.line([prev_xy, xy], loc[2])
-        prev_xy = xy
+    penetrations = floor_map * WALL_PENETRATION
+    reflections = floor_map * WALL_REFLECTION
+    reflections[reflections == 0] = -100.0
+    orientations = estimate_orientation(map_dim, reflections)
+    # blocking_display_rss_map(
+    #     abs(orientations),
+    #     visualize=visualize,
+    #     output_map=output_map,
+    #     fp=filepath+'ori',
+    #     vmin=-10,
+    #     vmax=100
+    # )
 
-    # rotate image back by 90°
-    # map_image = map_image.rotate(90)
-
-    # crop image
-    bgcolor_image = Image.new('RGBA', map_image.size, grey)
-    cropbox = ImageChops.subtract(map_image, bgcolor_image).getbbox()
-    map_image = map_image.crop(cropbox)
-
-    # and replace background with transparent pixels
-    pixdata = map_image.load()
-    for y in range(map_image.size[1]):
-        for x in range(map_image.size[0]):
-            if pixdata[x, y] == grey:
-                pixdata[x, y] = transparent
-
-    temp = io.BytesIO()
-    map_image.save(temp, format="png")
-    return temp
+    with open(filepath.replace("_map", "_floormap.pickle"), "wb") as f:
+        pickle.dump([penetrations, reflections, orientations], f)
 
 
 def test(args):
