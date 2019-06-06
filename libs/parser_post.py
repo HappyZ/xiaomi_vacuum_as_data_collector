@@ -107,7 +107,8 @@ def convert_to_pickle_rss(
     output_map: bool = False,
     filters: int = None,
     sampling: bool = False,
-    map_dim: tuple = None
+    map_dim: tuple = None,
+    map_res: float = None
 ):
     '''
     modified from Zhuolin
@@ -122,6 +123,9 @@ def convert_to_pickle_rss(
     # define map dimension
     if map_dim is None:
         map_dim = (PICKLE_MAP_SIZE, PICKLE_MAP_SIZE)
+
+    if map_res is None:
+        map_res = PICKLE_MAP_STEP
 
     # pick the most frequent type
     pkt_types = [(key, len(results[key])) for key in results.keys()]
@@ -147,12 +151,12 @@ def convert_to_pickle_rss(
         # if i not in rss_map_dict:
         #     rss_map_dict[i] = {}
         # search for x_idx
-        upper_bound_x = loc_x_center + PICKLE_MAP_STEP * (i - (map_dim[0] / 2) + 0.5)
-        lower_bound_x = upper_bound_x - PICKLE_MAP_STEP
+        upper_bound_x = loc_x_center + map_res * (i - (map_dim[0] / 2) + 0.5)
+        lower_bound_x = upper_bound_x - map_res
         data_x_idxs = find_index(
             data[0, :],
-            lower_bound_x - factor * PICKLE_MAP_STEP,
-            upper_bound_x + factor * PICKLE_MAP_STEP
+            lower_bound_x - factor * map_res,
+            upper_bound_x + factor * map_res
         )
         data_part = data[:, data_x_idxs]
         if data_part.size is 0:
@@ -160,12 +164,12 @@ def convert_to_pickle_rss(
         data_y_idx = 0
         for j in range(map_dim[1]):
             # search for y_idx
-            upper_bound_y = loc_y_center + PICKLE_MAP_STEP * (j - (map_dim[1] / 2) + 0.5)
-            lower_bound_y = upper_bound_y - PICKLE_MAP_STEP
+            upper_bound_y = loc_y_center + map_res * (j - (map_dim[1] / 2) + 0.5)
+            lower_bound_y = upper_bound_y - map_res
             data_y_idxs = find_index(
                 data_part[1, :],
-                lower_bound_y - factor * PICKLE_MAP_STEP,
-                upper_bound_y + factor * PICKLE_MAP_STEP
+                lower_bound_y - factor * map_res,
+                upper_bound_y + factor * map_res
             )
             data_fullfilled = data_part[2, data_y_idxs]
             orientation_fullfilled = data_part[3, data_y_idxs]

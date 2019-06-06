@@ -79,7 +79,8 @@ def convert_to_pickle(
     output_map=False,
     sampling=False, 
     sampling_num=5,
-    map_dim=None
+    map_dim=None,
+    map_res=0.1
 ):
     '''
     '''
@@ -101,7 +102,8 @@ def convert_to_pickle(
                             output_map=output_map,
                             filters=fff,
                             sampling=sampling,
-                            map_dim=map_dim
+                            map_dim=map_dim,
+                            map_res=map_res
                         )
                 else:
                     convert_to_pickle_rss(
@@ -111,7 +113,8 @@ def convert_to_pickle(
                         output_map=output_map,
                         filters=filters,
                         sampling=sampling,
-                        map_dim=map_dim
+                        map_dim=map_dim,
+                        map_res=map_res
                     )
             except KeyboardInterrupt:
                 print("KeyboardInterrupt happened")
@@ -149,7 +152,8 @@ def main(args):
             output_map=args.visualize_dump,
             sampling=args.sampling,
             sampling_num=args.sampling_num,
-            map_dim=args.dimension
+            map_dim=args.dimension,
+            map_res=args.resolution
         )
 
     # generate path in map for visualization
@@ -226,6 +230,13 @@ if __name__ == '__main__':
         dest='dimension',
         default=None,
         help='Specify dimension/size of the map via `--dimension="width height"`, default 64x64'
+    )
+    parser.add_argument(
+        '--resolution', '-res',
+        dest='resolution',
+        type=float,
+        default=0.1,
+        help='Specify resolution of the map, default 0.1m'
     )
     args, __ = parser.parse_known_args()
 
