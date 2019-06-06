@@ -148,7 +148,8 @@ def main(args):
             is_csi=is_csi,
             output_map=args.visualize_dump,
             sampling=args.sampling,
-            sampling_num=args.sampling_num
+            sampling_num=args.sampling_num,
+            map_dim=args.dimension
         )
 
     # generate path in map for visualization
@@ -229,7 +230,8 @@ if __name__ == '__main__':
     args, __ = parser.parse_known_args()
 
     try:
-        args.dimension = [int(x) for x in args.dimension.split(" ")]
+        if args.dimension is not None:
+            args.dimension = [int(x) for x in args.dimension.split(" ")]
     except BaseException:
         print("err parsing dimension..")
         exit(2)
