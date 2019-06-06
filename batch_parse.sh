@@ -36,6 +36,7 @@ echo "working on folder '$1'"
 mkdir -p ${2}_all
 mkdir -p ${2}_horiz
 mkdir -p ${2}_verti
+mkdir -p ${2}_floormap
 mkdir -p ${2}_subsampled
 mkdir -p ${2}_direction_0
 mkdir -p ${2}_direction_1
@@ -67,17 +68,33 @@ for folder in ${1%/}/*; do
     echo "########################################"
     echo "     clearing *_sig folders under ${folder}.."
     echo "########################################"
-    find $folder -name "*_sig" -type d -exec rm -r {} \; > /dev/null 2>&1
+    find ${folder} -name "*_sig" -type d -exec rm -r {} \; > /dev/null 2>&1
+    find ${folder} -name "*.png" -o -name "*.pickle" -delete
 
     echo "########################################"
     echo "     processing folder: ${folder}.."
     echo "########################################"
-
-    ${PYTHON} preprocessor.py "${folder}" --pickle -vd >> $LOG_FILE 2>&1
+    ${PYTHON} preprocessor.py "${folder}" >> $LOG_FILE 2>&1
     if [ ! $? -eq 0 ]; then
         echo "missing required files.."
         continue
     fi
+
+    echo "########################################"
+    echo "     extracting floormap.."
+    echo "########################################"
+    ${PYTHON} preprocessor.py "${folder}" --map -vd
+    for file in $(find ${folder} -name "*.png"); do
+        mv ${file} ${2}_floormap/${PREFIX}_floormap.png
+    done
+    for file in $(find ${folder} -name "*.pickle"); do
+        mv ${file} ${2}_floormap/${PREFIX}_floormap.pickle
+    done
+
+    echo "########################################"
+    echo "     normal processing.."
+    echo "########################################"
+    ${PYTHON} preprocessor.py "${folder}" --pickle -vd >> $LOG_FILE 2>&1
     for file in $(find ${folder} -name "*.png" -o -name "*.pickle"); do
         cp ${file} ${2}_all/${PREFIX}_$(basename ${file})
         mv ${file} $MOVE_TO_FOLDER/${PREFIX}_$(basename ${file})
