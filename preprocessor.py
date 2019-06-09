@@ -107,7 +107,6 @@ def main(args):
     gts = get_groundtruth_dict(f_gt)
 
     if args.pickle:
-        # f_sig_extracted = [x for x in f_sig_extracted if '98fc11691fc5' in x]
         convert_to_pickle(
             f_sig_extracted,
             args.orientation,
